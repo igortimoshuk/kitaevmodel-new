@@ -154,7 +154,7 @@ class HexagonZigzag:
         plt.show()
         
     def diagonalize(self):
-        hamiltonian = tf.linalg.band_part(tf.constant(nx.to_numpy_matrix(self.graph),
+        hamiltonian = tf.linalg.band_part(tf.constant(nx.to_numpy_array(self.graph),
                                                   dtype=tf.complex64), 0, -1)
 
         hamiltonian = (hamiltonian -
