@@ -6,9 +6,12 @@ import matplotlib
 from matplotlib import pyplot as plt
 import matplotlib.animation
 
-import basesample
-from basesample import KitaevBase
-
+if __name__ != '__main__': 
+    import kitaevmodel
+    from kitaevmodel.basesample import KitaevBase
+else:
+    import basesample
+    from basesample import KitaevBase
 
 class HexagonZigzag(KitaevBase):
     def __init__(self, m, kappa, hz, hb):
@@ -119,15 +122,15 @@ class BandArmchair(KitaevBase):
 if __name__ == '__main__':  
     import os
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    kit_model = BandArmchair(10, 5, 0.027, 0.3, 0)
+    kit_model = KitaevBase(40, 40, 0.027, 0.3, 0)
     kit_model.diagonalize()
     initial_state = np.zeros_like(kit_model.v[:, 0])
-    initial_state[31] = 1
+    initial_state[1021] = 1
     kit_model.plot_state(initial_state, save=True, size=20, max_amp=0.1, colormap='viridis_r')
     fin_state = kit_model.evolution(initial_state, 100)
     kit_model.plot_state(fin_state, file_name='fin_state.pdf', save=True, size=10, max_amp=0.1)
-    kit_model.animated_ev(initial_state, 10, 
-                    frames=30, interval=100, repeat=False, 
+    kit_model.animated_ev(initial_state, 0.4, 
+                    frames=90, interval=10, repeat=False, 
                     file_name='anime.gif', save='False', 
                     size=10, max_amp=0.3)
     print('Done')
