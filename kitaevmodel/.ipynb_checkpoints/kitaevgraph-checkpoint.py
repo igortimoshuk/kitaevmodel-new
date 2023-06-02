@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 import matplotlib
 from matplotlib import pyplot as plt
+import matplotlib.animation
 
 class HexagonZigzag:
     def __init__(self, m, kappa, hz, hb):
@@ -161,14 +162,10 @@ class HexagonZigzag:
                        tf.transpose(hamiltonian))
         
         self.e, self.v = tf.linalg.eigh(1j * hamiltonian)
-        self.v_inf = tf.linalg.inv(self.v)
+        self.v_inv = tf.linalg.inv(self.v)
         
-    def plot_state(self, state, size=1,  
-                   file_name='state.pdf', 
-                   save=False):
-        state /= np.linalg.norm(state)
+    def _draw_state(self, state, size, max_amp):
         colors = np.abs(state)
-
         white_nodes = []
         white_nodes_color = []
         black_nodes = []
@@ -183,29 +180,84 @@ class HexagonZigzag:
                 white_nodes.append(node)
                 white_nodes_color.append(colors[i]) 
             i += 1
-
-        plt.figure(figsize=(self.max_x / size, self.max_y / size)) 
+        
         nx.draw_networkx_nodes(self.graph, 
                                self.pos, 
                                nodelist=black_nodes, 
                                node_shape=(3, 0, 270),
                                node_color=black_nodes_color,
-                               node_size=9600 / size ** 2)
+                               node_size=9600 / size ** 2, 
+                               vmin=0, vmax=max_amp)
 
         nx.draw_networkx_nodes(self.graph, 
                                self.pos, 
                                nodelist=white_nodes, 
                                node_shape=(3, 0, 90),
                                node_color=white_nodes_color,
-                               node_size=9600 / size ** 2)
+                               node_size=9600 / size ** 2,
+                               vmin=0, vmax=max_amp)
+              
+    def plot_state(self, state, size=1,  
+                   file_name='state.pdf', 
+                   save=False, max_amp=1):
+        state /= np.linalg.norm(state)
+        plt.figure(figsize=(self.max_x / size, self.max_y / size))
+        plt.box(False)
+        self._draw_state(state, size, max_amp)
+        
         if save:
-            plt.savefig(file_name, bbox_inches = 'tight')
+            plt.savefig(file_name, bbox_inches='tight', 
+                        pad_inches=0)
         plt.show()
         
+    def evolution(self, state, time=1):
+        coeff = tf.linalg.matvec(self.v_inv, (state / 
+                                              tf.norm(state)))
+        return tf.linalg.matvec(self.v, coeff * 
+                                tf.math.exp(1j * time * self.e))
+    
+    def _update(self, num, eigst_coeff, time, size, max_amp):
+        time = (num + 0.01) * time
+        plt.clf()
         
-if __name__ == '__main__':                
-    kit_model = HexagonZigzag(5, 0.027, 0.3, 0)
+        state = tf.linalg.matvec(self.v, 
+                                         eigst_coeff * 
+                                         tf.math.exp(1j * time * self.e))
+        self._draw_state(state, size, max_amp)
+    
+    def animated_ev(self, initial_state, time, 
+                    frames=30, interval=100, repeat=False, 
+                    file_name='anime.gif', save='False', 
+                    size=10, max_amp=1):
+        fig, ax = plt.subplots(figsize=(self.max_x / size, self.max_y / size))
+        plt.box(False)
+        eigst_coeff = tf.linalg.matvec(self.v_inv, 
+                                       (initial_state / 
+                                        tf.norm(initial_state)))
+        ani = matplotlib.animation.FuncAnimation(fig, self._update, frames=frames, 
+                                                 interval=interval, repeat=repeat, 
+                                                 fargs=(eigst_coeff, time, 
+                                                        size, max_amp))
+        if save:
+            ani.save(file_name)
+        else:
+            ani.show()
+        
+        
+if __name__ == '__main__':  
+    import os
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    kit_model = HexagonZigzag(20, 0.027, 0.3, 0)
     kit_model.diagonalize()
-    kit_model.plot_state(kit_model.v[:, 1250], save=True)
+    initial_state = np.zeros_like(kit_model.v[:, 0])
+    initial_state[31] = 1
+    kit_model.plot_state(initial_state, save=True, size=20, max_amp=0.1)
+    fin_state = kit_model.evolution(initial_state, 100)
+    kit_model.plot_state(fin_state, file_name='fin_state.pdf', save=True, size=20, max_amp=0.1)
+    kit_model.animated_ev(initial_state, 10, 
+                    frames=30, interval=100, repeat=False, 
+                    file_name='anime.gif', save='False', 
+                    size=10, max_amp=0.3)
+    print(*tf.config.experimental.get_memory_info('GPU:0'))
     #print(kit_model.pos)
     #kit_model.plot_graph(file_name='g.pdf', save=True)
