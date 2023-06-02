@@ -1,2 +1,2 @@
 from kitaevmodel import kitaevgraph
-from kitaevmodel.kitaevgraph import *
+from kitaevmodel.basesample import *

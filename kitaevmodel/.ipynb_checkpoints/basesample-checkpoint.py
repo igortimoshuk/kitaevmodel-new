@@ -5,56 +5,45 @@ import matplotlib
 from matplotlib import pyplot as plt
 import matplotlib.animation
 
-class HexagonZigzag:
-    def __init__(self, m, kappa, hz, hb):
-        self.graph = nx.hexagonal_lattice_graph(2*m-1,2*m-1, 
+class KitaevBase:
+    def __init__(self, m, n, kappa, hz, hb):
+        self.graph = nx.hexagonal_lattice_graph(m, n, 
                                                 periodic=False, 
                                                 with_positions=True, 
                                                 create_using=None)
         self.m = m
+        self.n = n
         self.kappa = kappa
         self.hz = hz
         self.hb = hb
-        self.pos = nx.get_node_attributes(self.graph, 'pos')
-        coord = np.array(list(self.pos.values()))
+        self._set_parameters()
         
+    def _set_parameters(self):
         self._remove_unwanted_nodes()
+        self._calc_figsize()   
         self._find_edge()
+        self._set_edge_dir()
+        self._add_kappa()
+        self._add_edge_nodes()
+        self.pos = nx.get_node_attributes(self.graph, 'pos')
         
+    def _remove_unwanted_nodes(self):
+        pass
+
+    def _find_edge(self):
+        self.edge_nodes = {}
+        for node in self.graph.nodes:
+            neighbors = list(self.graph.neighbors(node))
+            if len(neighbors) == 2:
+                self.edge_nodes[node] = neighbors
+                
+    def _set_edge_dir(self):
         for edge in self.graph.edges(data=True):
             edge[2]['weight'] = 1
             
         for u, v, d in self.graph.edges(data=True):
             if (u[0] + u[1]) % 2 == 0:
                 d['weight'] = -1
-        
-        self._add_kappa()
-        self._add_edge_nodes()
-        self.pos = nx.get_node_attributes(self.graph, 'pos')
-        
-        if self.hb:
-            self.max_x = np.max(coord[:, 0]) + 2
-            self.max_y = np.max(coord[:, 1]) + np.sqrt(3)
-        else:
-            self.max_x = np.max(coord[:, 0])
-            self.max_y = np.max(coord[:, 1])
-    
-    def _remove_unwanted_nodes(self):
-        cx, cy = self.m - 0.5, 2 * self.m - (self.m % 2) 
-        unwanted = []
-        for n in self.graph.nodes:    
-            x, y = n
-            if abs(cx - x) + abs(cy - y) > 2 * self.m:
-                unwanted.append(n)
-        for n in unwanted:
-            self.graph.remove_node(n)
-            
-    def _find_edge(self):
-        self.edge_nodes = {}
-        for node in self.graph.nodes:
-            neighbors = list(self.graph.neighbors(node))
-            if len(neighbors) == 2:
-                self.edge_nodes[node] = neighbors  
     
     def _add_kappa(self):
         results = {}
@@ -114,6 +103,16 @@ class HexagonZigzag:
                 first, second = value
                 self.graph.remove_edge(first, second)
     
+    def _calc_figsize(self):
+        coord = np.array(list(nx.get_node_attributes(self.graph, 'pos').values()))
+        if self.hb:
+            self.max_x = np.max(coord[:, 0]) + 2
+            self.max_y = np.max(coord[:, 1]) + np.sqrt(3)
+        else:
+            self.max_x = np.max(coord[:, 0])
+            self.max_y = np.max(coord[:, 1])
+        
+    
     def plot_graph(self, file_name='graph.pdf', save=False):
         matrix = nx.to_numpy_array(self.graph)
         matrix = np.triu(matrix)
@@ -164,7 +163,7 @@ class HexagonZigzag:
         self.e, self.v = tf.linalg.eigh(1j * hamiltonian)
         self.v_inv = tf.linalg.inv(self.v)
         
-    def _draw_state(self, state, size, max_amp):
+    def _draw_state(self, state, size, max_amp, colormap):
         colors = np.abs(state)
         white_nodes = []
         white_nodes_color = []
@@ -187,6 +186,7 @@ class HexagonZigzag:
                                node_shape=(3, 0, 270),
                                node_color=black_nodes_color,
                                node_size=9600 / size ** 2, 
+                               cmap=colormap,
                                vmin=0, vmax=max_amp)
 
         nx.draw_networkx_nodes(self.graph, 
@@ -195,15 +195,17 @@ class HexagonZigzag:
                                node_shape=(3, 0, 90),
                                node_color=white_nodes_color,
                                node_size=9600 / size ** 2,
+                               cmap=colormap,
                                vmin=0, vmax=max_amp)
               
     def plot_state(self, state, size=1,  
                    file_name='state.pdf', 
-                   save=False, max_amp=1):
+                   save=False, max_amp=1, 
+                   colormap='viridis'):
         state /= np.linalg.norm(state)
         plt.figure(figsize=(self.max_x / size, self.max_y / size))
         plt.box(False)
-        self._draw_state(state, size, max_amp)
+        self._draw_state(state, size, max_amp, colormap)
         
         if save:
             plt.savefig(file_name, bbox_inches='tight', 
@@ -216,48 +218,29 @@ class HexagonZigzag:
         return tf.linalg.matvec(self.v, coeff * 
                                 tf.math.exp(1j * time * self.e))
     
-    def _update(self, num, eigst_coeff, time, size, max_amp):
+    def _update(self, num, eigst_coeff, time, size, max_amp, colormap):
         time = (num + 0.01) * time
         plt.clf()
+        plt.box(False)
         
         state = tf.linalg.matvec(self.v, 
                                          eigst_coeff * 
                                          tf.math.exp(1j * time * self.e))
-        self._draw_state(state, size, max_amp)
+        self._draw_state(state, size, max_amp, colormap)
     
     def animated_ev(self, initial_state, time, 
                     frames=30, interval=100, repeat=False, 
                     file_name='anime.gif', save='False', 
-                    size=10, max_amp=1):
+                    size=10, max_amp=1, colormap='viridis'):
         fig, ax = plt.subplots(figsize=(self.max_x / size, self.max_y / size))
-        plt.box(False)
         eigst_coeff = tf.linalg.matvec(self.v_inv, 
                                        (initial_state / 
                                         tf.norm(initial_state)))
         ani = matplotlib.animation.FuncAnimation(fig, self._update, frames=frames, 
                                                  interval=interval, repeat=repeat, 
                                                  fargs=(eigst_coeff, time, 
-                                                        size, max_amp))
+                                                        size, max_amp, colormap))
         if save:
             ani.save(file_name)
         else:
             ani.show()
-        
-        
-if __name__ == '__main__':  
-    import os
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    kit_model = HexagonZigzag(20, 0.027, 0.3, 0)
-    kit_model.diagonalize()
-    initial_state = np.zeros_like(kit_model.v[:, 0])
-    initial_state[31] = 1
-    kit_model.plot_state(initial_state, save=True, size=20, max_amp=0.1)
-    fin_state = kit_model.evolution(initial_state, 100)
-    kit_model.plot_state(fin_state, file_name='fin_state.pdf', save=True, size=20, max_amp=0.1)
-    kit_model.animated_ev(initial_state, 10, 
-                    frames=30, interval=100, repeat=False, 
-                    file_name='anime.gif', save='False', 
-                    size=10, max_amp=0.3)
-    print(*tf.config.experimental.get_memory_info('GPU:0'))
-    #print(kit_model.pos)
-    #kit_model.plot_graph(file_name='g.pdf', save=True)
