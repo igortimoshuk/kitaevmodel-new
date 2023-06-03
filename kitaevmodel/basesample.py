@@ -243,4 +243,57 @@ class KitaevBase:
         if save:
             ani.save(file_name)
         else:
-            ani.show()
+            return HTML(ani.to_html5_video())
+        
+    def add_disorder(self, mse=0.1, n_samples=2, noise_vals=None):
+        hamiltonian = tf.linalg.band_part(tf.constant(nx.to_numpy_array(self.graph),
+                                                  dtype=tf.float32), 0, -1)
+        hamiltonian = (hamiltonian - tf.transpose(hamiltonian)) 
+        number_of_el = tf.where(hamiltonian).shape[0]
+        mult_ham = tf.tensordot(tf.ones(n_samples, dtype=tf.float32), hamiltonian, 
+                                axes=0)
+
+        if noise_vals == None:
+            noise_vals = tf.random.normal((n_samples, number_of_el), 1, mse)
+        noise = tf.sparse.to_dense(tf.sparse.SparseTensor(
+            indices=tf.where(mult_ham), 
+            values=tf.reshape(noise_vals, [-1]),
+            dense_shape=mult_ham.shape))
+        noise = (noise + tf.transpose(noise, perm=[0,2,1])) / 2
+        self.n_samples = n_samples
+        self.e_mult, self.v_mult = tf.linalg.eigh(1j * tf.cast(noise * mult_ham, 
+                                                               dtype=tf.complex64))
+        self.v_inv_mult = tf.linalg.inv(self.v_mult)
+        
+    def _add_repl(self, state):
+        state = state / np.linalg.norm(state)
+        return tf.tensordot(tf.ones(self.n_samples, dtype=tf.complex64), 
+                            tf.constant(state, dtype=tf.complex64),
+                            axes=0)
+        
+    def dis_evolution(self, state, time=1):
+        if len(state.shape) == 1:
+            state = self._add_repl(state)    
+        coeff = tf.linalg.matvec(self.v_inv_mult, state)
+        return tf.linalg.matvec(self.v_mult, coeff * 
+                                tf.math.exp(1j * time * self.e_mult))
+    
+    def dis_overlap(self, in_state, time_s, time_f, n_times=1000, fin_state=None):
+        if len(in_state.shape) == 1:
+            in_state = self._add_repl(in_state)
+        if fin_state == None:
+            fin_state = in_state
+        elif len(fin_state.shape) == 1:
+            fin_state = self._add_repl(fin_state) 
+        times = tf.cast(tf.linspace(time_s, time_f, n_times),
+                        dtype=tf.complex64)
+        phases = tf.tensordot(times, self.e_mult, axes=0)
+        
+        in_coeff = tf.linalg.matvec(self.v_inv_mult, in_state)
+        fin_coeff = tf.linalg.matvec(self.v_inv_mult, fin_state)
+        time_var_coeff = tf.tensordot(tf.ones([n_times], dtype=tf.complex64), 
+                                  in_coeff, axes=0)
+        overlap_var = tf.math.abs(tf.math.reduce_sum(time_var_coeff * 
+                                                     tf.math.exp(1j * phases) *  
+                                                     tf.math.conj(fin_coeff), axis=2))
+        return times, overlap_var

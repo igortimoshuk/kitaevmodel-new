@@ -122,7 +122,17 @@ class BandArmchair(KitaevBase):
 if __name__ == '__main__':  
     import os
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    kit_model = KitaevBase(40, 40, 0.027, 0.3, 0)
+    kit_model = HexagonZigzag(20, 0.027, 0.3, 0)
+    kit_model.add_disorder(mse=0.1, n_samples=5)
+    initial_state = np.zeros(kit_model.e_mult.shape[-1])
+    initial_state[21] = 1
+    #kit_model.plot_state(initial_state, save=True, size=20, max_amp=0.1, colormap='viridis_r')
+    #fin_states = kit_model.dis_evolution(initial_state, time=400)
+    times, overlap = kit_model.dis_overlap(initial_state, 500, 600, n_times=100)
+    print(np.max(overlap, axis=0))
+    print('Done')
+    
+    """
     kit_model.diagonalize()
     initial_state = np.zeros_like(kit_model.v[:, 0])
     initial_state[1021] = 1
@@ -134,4 +144,5 @@ if __name__ == '__main__':
                     file_name='anime.gif', save='False', 
                     size=10, max_amp=0.3)
     print('Done')
+    """
     #kit_model.plot_graph(file_name='g.pdf', save=True)
