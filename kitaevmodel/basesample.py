@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 import matplotlib.animation
 
 class KitaevBase:
-    def __init__(self, m, n, kappa, hz, hb):
+    def __init__(self, m, n, kappa, hz, hb, gen_rows=False):
         self.graph = nx.hexagonal_lattice_graph(m, n, 
                                                 periodic=False, 
                                                 with_positions=True, 
@@ -20,14 +20,19 @@ class KitaevBase:
         
     def _set_parameters(self):
         self._remove_unwanted_nodes()
-        self._calc_figsize()   
         self._find_edge()
+        self._add_row_labels()
+        self._calc_figsize()   
         self._set_edge_dir()
         self._add_kappa()
+        self.pos = nx.get_node_attributes(self.graph, 'pos')
         self._add_edge_nodes()
         self.pos = nx.get_node_attributes(self.graph, 'pos')
         
     def _remove_unwanted_nodes(self):
+        pass
+    
+    def _add_row_labels(self):
         pass
 
     def _find_edge(self):
