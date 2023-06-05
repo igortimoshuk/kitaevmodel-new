@@ -8,12 +8,9 @@ import matplotlib
 from matplotlib import pyplot as plt
 import matplotlib.animation
 
-if __name__ != '__main__': 
-    import kitaevmodel
-    from kitaevmodel.basesample import KitaevBase
-else:
-    import basesample
-    from basesample import KitaevBase
+import kitaevmodel
+from kitaevmodel.basesample import KitaevBase
+
 
 class HexagonZigzag(KitaevBase):
     def __init__(self, m, kappa, hz, hb, gen_rows=False):
@@ -122,6 +119,7 @@ class HexagonZigzag(KitaevBase):
         norm = matplotlib.colors.Normalize(vmin=0, vmax=max_amp)
         mapping = matplotlib.cm.ScalarMappable(norm=norm, cmap=colormap)
         plt.figure(figsize=(20, 5))
+        plt.axis('off')
     
         for i in range(self.m - 1):
             N = len(self.edge_n[i]) // 6
@@ -155,7 +153,6 @@ class HexagonZigzag(KitaevBase):
                           save=False, max_amp=1, 
                           colormap='viridis'):
         state /= np.linalg.norm(state)
-        plt.box(False)
         self._draw_state_expand(state, max_amp, colormap)
         
         if save:
@@ -304,6 +301,7 @@ class PeriodicSample(KitaevBase):
         self.m = m
         self.n = n
         self.kappa = kappa
+        self.hb = 0
         self._set_parameters()
         
     def _set_edge_dir(self):
@@ -483,57 +481,3 @@ class HexagonZigzagLinSpec(HexagonZigzag):
             current = koeff[x ** (2 * i + 1)] - 2 * current
             result[i] = current
         return result
-        
-        
-        
-if __name__ == '__main__':  
-    import os
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    kit_model = HexagonZigzagLinSpec(4, 0.027, 0.3, 0)
-    #kit_model.add_readout(0, side='right', lambd=0.5)
-    #kit_model.add_readout(0, side='left', lambd=0.5)
-    #kit_model.plot_graph(save=True)
-    kit_model.diagonalize()
-    print(kit_model.e)
-    initial_state = np.zeros_like(kit_model.v[:, 0])
-    initial_state[10] = 1
-    fin_state = kit_model.evolution(initial_state, 0.4)
-    kit_model.plot_state(fin_state.numpy(), save=True, size=10, max_amp=0.1, colormap='viridis')
-    #print(kit_model.edge_n)
-    """
-    kit_model = HexagonHole(20, 8, 0.027, 0.3, 0)
-    kit_model.diagonalize()
-    initial_state = np.zeros_like(kit_model.v[:, 0])
-    initial_state[101] = 1
-    
-    fin_state = kit_model.evolution(initial_state, 100)
-    kit_model.plot_state(fin_state, file_name='fin_state.pdf', save=True, size=10, max_amp=0.1)
-    kit_model.animated_ev(initial_state, 0.4, 
-                    frames=90, interval=10, repeat=False, 
-                    file_name='anime.gif', save='False', 
-                    size=10, max_amp=0.3)
-    
-    kit_model.add_disorder(mse=0.1, n_samples=5)
-    initial_state = np.zeros(kit_model.e_mult.shape[-1])
-    initial_state[21] = 1
-    #kit_model.plot_state(initial_state, save=True, size=20, max_amp=0.1, colormap='viridis_r')
-    #fin_states = kit_model.dis_evolution(initial_state, time=400)
-    times, overlap = kit_model.dis_overlap(initial_state, 500, 600, n_times=100)
-    print(np.max(overlap, axis=0))
-    print('Done')
-    
-    
-    kit_model.diagonalize()
-    initial_state = np.zeros_like(kit_model.v[:, 0])
-    initial_state[101] = 1
-    kit_model.plot_state(initial_state, save=True, size=20, max_amp=0.1, colormap='viridis_r')
-    fin_state = kit_model.evolution(initial_state, 100)
-    kit_model.plot_state(fin_state, file_name='fin_state.pdf', save=True, size=10, max_amp=0.1)
-    kit_model.animated_ev(initial_state, 0.4, 
-                    frames=90, interval=10, repeat=False, 
-                    file_name='anime.gif', save='False', 
-                    size=10, max_amp=0.3)
-                    """
-    print('Done')
-    
-    #kit_model.plot_graph(file_name='g.pdf', save=True)

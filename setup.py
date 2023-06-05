@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '0.1.0' 
+VERSION = '0.1.2' 
 DESCRIPTION = 'A tool for numerical simulation of Kitaev honeycomb model'
 LONG_DESCRIPTION = 'A tool for numerical simulation of Kitaev honeycomb model'
 
