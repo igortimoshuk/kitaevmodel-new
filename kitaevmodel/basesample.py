@@ -174,15 +174,20 @@ class KitaevBase:
         white_nodes_color = []
         black_nodes = []
         black_nodes_color = []
+        ext_qubits = []
+        ext_qubits_color = []
         i = 0
 
         for node in self.graph.nodes():
-            if (node[0] + node[1]) % 2 == 1:
+            if len(node) == 2 and (node[0] + node[1]) % 2 == 1:
                 black_nodes.append(node)
                 black_nodes_color.append(colors[i])
-            else:
+            elif len(node) == 2:
                 white_nodes.append(node)
-                white_nodes_color.append(colors[i]) 
+                white_nodes_color.append(colors[i])
+            else:
+                ext_qubits.append(node)
+                ext_qubits_color.append(colors[i])
             i += 1
         
         nx.draw_networkx_nodes(self.graph, 
@@ -201,6 +206,15 @@ class KitaevBase:
                                node_color=white_nodes_color,
                                node_size=9600 / size ** 2,
                                cmap=colormap,
+                               vmin=0, vmax=max_amp)
+        
+        nx.draw_networkx_nodes(self.graph, 
+                               self.pos,  
+                               nodelist=ext_qubits, 
+                               node_shape='o',
+                               node_color=ext_qubits_color,
+                               node_size=4000 / size ** 2,
+                               cmap=colormap, 
                                vmin=0, vmax=max_amp)
               
     def plot_state(self, state, size=1,  
