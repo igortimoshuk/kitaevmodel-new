@@ -249,7 +249,7 @@ class KitaevBase:
     
     def animated_ev(self, initial_state, time, 
                     frames=30, interval=100, repeat=False, 
-                    file_name='anime.gif', save='False', 
+                    file_name='anime.gif', save=False, 
                     size=10, max_amp=1, colormap='viridis'):
         fig, ax = plt.subplots(figsize=(self.max_x / size, self.max_y / size))
         eigst_coeff = tf.linalg.matvec(self.v_inv, 
@@ -261,8 +261,7 @@ class KitaevBase:
                                                         size, max_amp, colormap))
         if save:
             ani.save(file_name)
-        else:
-            return HTML(ani.to_html5_video())
+        return ani.to_jshtml()
         
     def add_disorder(self, mse=0.1, n_samples=2, noise_vals=None):
         hamiltonian = tf.linalg.band_part(tf.constant(nx.to_numpy_array(self.graph),
